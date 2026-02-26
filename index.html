@@ -1,203 +1,1574 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PLAY M3U</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLAY M3U</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a1628;
+    --bg-card: #112244;
+    --bg-card2: #162a50;
+    --accent: #c8851a;
+    --accent-hover: #e09820;
+    --text: #ffffff;
+    --text-muted: #8aaad4;
+    --text-orange: #e09820;
+    --border: rgba(255,255,255,0.1);
+    --radius: 20px;
+    --spinner-color: #3a7bd5;
+  }
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  <link rel="stylesheet" href="style.css">
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    user-select: none;
+  }
+
+  /* ===== PAGES ===== */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; flex-direction: column; }
+
+  /* ===== PAGE 1: WELCOME ===== */
+  #page-welcome {
+    background: var(--bg-dark);
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .welcome-card {
+    width: 330px;
+    min-height: 316px;
+    background: var(--bg-card);
+    border-radius: 30px;
+    padding: 36px 28px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+
+  .welcome-title {
+    font-size: 30px;
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+
+  .welcome-desc {
+    font-size: 11px;
+    font-weight: 400;
+    color: #ccd6ec;
+    line-height: 1.7;
+  }
+
+  .btn-add-playlist {
+    width: 230px;
+    height: 90px;
+    background: var(--accent);
+    border: none;
+    border-radius: 30px;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .btn-add-playlist:hover, .btn-add-playlist:focus {
+    background: var(--accent-hover);
+    transform: scale(1.02);
+    outline: none;
+  }
+
+  .btn-add-playlist:active {
+    background: #fff;
+    color: var(--bg-card);
+    transform: scale(0.98);
+  }
+
+  /* ===== PAGE 2: CHOOSE SOURCE ===== */
+  #page-source {
+    background: var(--bg-dark);
+  }
+
+  .page-header {
+    background: var(--bg-card2);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 70px;
+    flex-shrink: 0;
+  }
+
+  .btn-back {
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 6px 2px;
+    transition: color 0.2s;
+  }
+
+  .btn-back:hover { color: var(--accent); }
+
+  .page-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .source-list {
+    flex: 1;
+    padding: 0;
+  }
+
+  .source-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 28px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  .source-item:hover, .source-item.selected {
+    background: var(--accent);
+  }
+
+  .source-item .checkbox {
+    width: 32px;
+    height: 32px;
+    border: 2px solid rgba(255,255,255,0.5);
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .source-item.selected .checkbox {
+    background: rgba(255,255,255,0.9);
+    border-color: transparent;
+  }
+
+  .source-item.selected .checkbox::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 4px;
+    display: block;
+  }
+
+  .source-label {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+
+  .note-box {
+    margin: 20px 20px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px;
+    min-height: 140px;
+  }
+
+  .note-box .note-title {
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+
+  .note-box .note-text {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.7;
+    color: #ccd6ec;
+  }
+
+  /* ===== PAGE 3: URL INPUT ===== */
+  #page-url {
+    background: var(--bg-dark);
+  }
+
+  .url-content {
+    flex: 1;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .input-label {
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: 10px;
+  }
+
+  .url-input-wrap {
+    position: relative;
+  }
+
+  .url-input {
+    width: 100%;
+    padding: 18px 20px;
+    background: var(--accent);
+    border: 2px solid transparent;
+    border-radius: 14px;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    outline: none;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .url-input::placeholder { color: rgba(255,255,255,0.6); font-style: italic; }
+
+  .url-input:focus {
+    background: #fff;
+    color: #0a1628;
+    border-color: #fff;
+  }
+
+  .url-input:focus::placeholder { color: var(--accent); }
+
+  .url-input.has-value:not(:focus) {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .url-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .btn-icon {
+    width: 72px;
+    height: 72px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 14px;
+    background: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    transition: background 0.2s, border-color 0.2s, transform 0.1s;
+  }
+
+  .btn-icon:hover, .btn-icon:focus {
+    background: var(--accent);
+    border-color: var(--accent);
+    outline: none;
+    transform: scale(1.05);
+  }
+
+  .btn-icon:active {
+    transform: scale(0.96);
+  }
+
+  .channel-count {
+    font-size: 12px;
+    font-weight: 400;
+    text-align: center;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ===== PAGE 4: NAME PLAYLIST ===== */
+  #page-name {
+    background: var(--bg-dark);
+  }
+
+  .name-content {
+    flex: 1;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .name-input {
+    width: 100%;
+    padding: 18px 20px;
+    background: #fff;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    color: #0a1628;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    outline: none;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .name-input:focus {
+    border-color: var(--accent);
+  }
+
+  .name-input.has-value { background: var(--accent); color: #fff; }
+
+  .download-section { display: flex; flex-direction: column; gap: 0; }
+
+  .download-title {
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: 18px;
+    line-height: 1.4;
+  }
+
+  .radio-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 0;
+    cursor: pointer;
+  }
+
+  .radio-box {
+    width: 32px;
+    height: 32px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 8px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .radio-item.selected .radio-box {
+    background: rgba(255,255,255,0.9);
+    border-color: transparent;
+  }
+
+  .radio-item.selected .radio-box::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    background: var(--bg-dark);
+    border-radius: 4px;
+    display: block;
+  }
+
+  .radio-label { font-size: 14px; }
+
+  /* ===== PAGE 5: PLAYLISTS ===== */
+  #page-playlists {
+    background: var(--bg-dark);
+  }
+
+  .playlist-header {
+    background: var(--bg-card2);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 70px;
+    flex-shrink: 0;
+  }
+
+  .playlist-list { flex: 1; }
+
+  .playlist-item {
+    padding: 22px 24px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: background 0.2s;
+  }
+
+  .playlist-item:hover, .playlist-item.selected {
+    background: var(--accent);
+  }
+
+  .playlist-item-name {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .playlist-item-info {
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.7);
+  }
+
+  .btn-update {
+    display: block;
+    padding: 22px 24px;
+    cursor: pointer;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    background: none;
+    border: none;
+    color: #fff;
+    text-align: left;
+    width: 100%;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: background 0.2s;
+  }
+
+  .btn-update:hover, .btn-update.active-btn {
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  .storage-section {
+    margin-top: auto;
+    padding: 28px 24px;
+  }
+
+  .storage-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .storage-info {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* ===== PAGE 6: SETTINGS ===== */
+  #page-settings {
+    background: var(--bg-dark);
+  }
+
+  .settings-header {
+    background: var(--bg-card2);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 70px;
+    flex-shrink: 0;
+  }
+
+  .settings-list { flex: 1; }
+
+  .settings-item {
+    display: block;
+    padding: 22px 24px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: #fff;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .settings-item:hover, .settings-item.active-btn {
+    background: var(--accent);
+  }
+
+  .note-box-settings {
+    margin: 20px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+
+  /* ===== PAGE 7: PLAYER ===== */
+  #page-player {
+    background: #000;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #video-el {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: absolute;
+    top: 0; left: 0;
+    z-index: 1;
+  }
+
+  .player-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+  }
+
+  .channel-info {
+    pointer-events: none;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
+    padding: 12px 18px 12px 14px;
+    margin: 0 16px 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 320px;
+    transition: opacity 0.5s, transform 0.5s;
+    will-change: transform, opacity;
+  }
+
+  .channel-info.sliding {
+    transform: translateX(60px);
+    opacity: 0.5;
+  }
+
+  .channel-info.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(80px);
+  }
+
+  .ch-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #1a2a4a;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 10px;
+    color: #888;
+  }
+
+  .ch-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+
+  .ch-details { flex: 1; min-width: 0; }
+
+  .ch-playlist-name {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-orange);
+    margin-bottom: 3px;
+  }
+
+  .ch-group {
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.7);
+    position: absolute;
+    top: 12px;
+    right: 18px;
+  }
+
+  .ch-num-name {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .ch-num {
+    font-size: 22px;
+    font-weight: 400;
+  }
+
+  .ch-name {
+    font-size: 16px;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  /* ===== LOADING SPINNER ===== */
+  .loading-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(10,22,40,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+    z-index: 1000;
+  }
+
+  .loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(58,123,213,0.3);
+    border-top-color: var(--spinner-color);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-size: 15px;
+    font-weight: 400;
+    color: #fff;
+  }
+
+  .loading-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: -10px;
+  }
+
+  /* Success msg */
+  .success-msg {
+    font-size: 18px;
+    font-weight: 400;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+    display: none;
+  }
+
+  /* ===== LANDSCAPE / TV LAYOUT ===== */
+  @media (orientation: landscape) and (min-width: 600px) {
+    #page-welcome {
+      flex-direction: row;
+      justify-content: center;
+      align-items: center;
+      gap: 60px;
+      padding: 40px 80px;
+    }
+
+    .welcome-card {
+      width: 380px;
+      padding: 40px 36px;
+    }
+
+    #page-source, #page-url, #page-name, #page-playlists, #page-settings {
+      flex-direction: column;
+    }
+
+    .page-header, .playlist-header, .settings-header {
+      padding: 14px 48px;
+    }
+
+    .source-list, .settings-list, .playlist-list {
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .url-content, .name-content {
+      max-width: 700px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 28px 0;
+    }
+
+    .note-box, .note-box-settings {
+      max-width: 760px;
+      margin: 16px auto;
+    }
+
+    .storage-section {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px 0;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    #page-welcome {
+      gap: 100px;
+    }
+
+    .welcome-card {
+      width: 420px;
+    }
+
+    .source-list, .settings-list, .playlist-list {
+      max-width: 1000px;
+    }
+  }
+
+  /* TV / large screen player */
+  @media (min-width: 900px) {
+    .channel-info {
+      max-width: 420px;
+      padding: 16px 22px 16px 16px;
+      margin: 0 24px 30px 0;
+    }
+
+    .ch-logo {
+      width: 72px;
+      height: 72px;
+    }
+
+    .ch-num { font-size: 28px; }
+    .ch-name { font-size: 20px; max-width: 260px; }
+  }
+
+  /* Focus for TV remote navigation */
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Number input overlay for TV */
+  .num-input-overlay {
+    position: fixed;
+    bottom: 80px;
+    right: 16px;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-size: 36px;
+    font-weight: 700;
+    color: #fff;
+    z-index: 20;
+    display: none;
+    letter-spacing: 4px;
+  }
+
+  .num-input-overlay.active { display: block; }
+
+  /* black flash on channel change */
+  .black-flash {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #000;
+    z-index: 9;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+
+  .black-flash.active { opacity: 1; }
+
+  .file-input-hidden { display: none; }
+</style>
 </head>
 <body>
 
-<noscript>
-  <p style="color:white;text-align:center;padding:40px">
-    Aplikasi membutuhkan JavaScript untuk berjalan.
-  </p>
-</noscript>
-
-<!-- ========== PAGE: WELCOME ========== -->
+<!-- ===== PAGE 1: WELCOME ===== -->
 <div id="page-welcome" class="page active">
-  <div class="welcome-bg"></div>
   <div class="welcome-card">
-    <h1 class="welcome-title">PLAY M3U.</h1>
-    <p class="welcome-desc">
+    <div class="welcome-title">PLAY M3U.</div>
+    <div class="welcome-desc">
       Aplikasi ini hanya untuk memutar siaran IPTV.<br>
       Belum ada channel di dalamnya.<br>
       Tambahkan playlist M3U Anda untuk mulai menonton.
-    </p>
-    <button class="btn-primary" id="btn-add-playlist-welcome" tabindex="1">
+    </div>
+    <button class="btn-add-playlist" onclick="goTo('page-source')">
       Tambah<br>Playlist M3U
     </button>
   </div>
 </div>
 
-<!-- ========== PAGE: CHOOSE TYPE ========== -->
-<div id="page-choose-type" class="page">
+<!-- ===== PAGE 2: CHOOSE SOURCE ===== -->
+<div id="page-source" class="page">
   <div class="page-header">
-    <button class="btn-back" id="back-from-choose" tabindex="1">
-      <span class="arrow-icon">&#8592;</span>
-      <span class="underline-text">Kembali</span>
-    </button>
-    <span class="page-title">Tambahkan playlist</span>
+    <button class="btn-back" onclick="goBack()">← Kembali</button>
+    <div class="page-title">Tambahkan<br>playlist</div>
   </div>
-
-  <div class="option-list">
-    <div class="option-item focusable" id="opt-url" tabindex="2">
-      <div class="option-checkbox"></div>
-      <span class="option-label">M3U playlist from URL</span>
+  <div class="source-list">
+    <div class="source-item" id="src-url" onclick="selectSource('url')">
+      <div class="checkbox"></div>
+      <div class="source-label">M3U playlist from URL</div>
     </div>
-
-    <div class="option-item focusable" id="opt-storage" tabindex="3">
-      <div class="option-checkbox"></div>
-      <span class="option-label">M3U playlist from storage/USB</span>
+    <div class="source-item" id="src-storage" onclick="selectSource('storage')">
+      <div class="checkbox"></div>
+      <div class="source-label">M3U playlist from<br>storage/USB</div>
     </div>
   </div>
-
-  <div class="catatan-box">
-    <span class="catatan-label">catatan:</span>
-    <p class="catatan-text" id="catatan-choose-text"></p>
+  <div class="note-box">
+    <div class="note-title">catatan:</div>
+    <div class="note-text" id="source-note-text"></div>
   </div>
 </div>
 
-<!-- ========== PAGE: ENTER URL ========== -->
-<div id="page-enter-url" class="page">
+<!-- ===== PAGE 3: URL INPUT ===== -->
+<div id="page-url" class="page">
   <div class="page-header">
-    <button class="btn-back" id="back-from-url" tabindex="1">
-      <span class="arrow-icon">&#8592;</span>
-      <span class="underline-text">Kembali</span>
-    </button>
-    <span class="page-title">Masukkan playlist</span>
+    <button class="btn-back" onclick="goTo('page-source')">← Kembali</button>
+    <div class="page-title">Masukkan<br>playlist</div>
   </div>
-
-  <div class="form-section">
-    <label class="field-label">M3U playlist URL</label>
-    <input type="url" id="url-input" class="url-input"
-           placeholder="https://contoh.com/siaran"
-           tabindex="2" autocomplete="off">
-
-    <div class="action-row">
-      <button class="btn-icon focusable" id="btn-clear-url" tabindex="3">✕</button>
-      <button class="btn-icon focusable" id="btn-next-url" tabindex="4">▶</button>
+  <div class="url-content">
+    <div>
+      <div class="input-label">M3U playlist URL</div>
+      <input class="url-input" id="url-input" type="url"
+        placeholder="https://contoh.com/siaran"
+        oninput="onUrlInput()"
+        onblur="onUrlBlur()"
+        onfocus="onUrlFocus()"
+        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/>
     </div>
-  </div>
-
-  <div class="loading-box" id="loading-url" style="display:none">
-    <div class="spinner"></div>
-    <p>Mohon bersabar...</p>
+    <div class="url-actions">
+      <button class="btn-icon" title="Hapus URL" onclick="clearUrl()">🗑</button>
+      <div class="channel-count" id="ch-count-url"></div>
+      <button class="btn-icon" title="Selanjutnya" onclick="fetchPlaylist()">⏭</button>
+    </div>
+    <div class="note-box">
+      <div class="note-title">catatan:</div>
+      <div class="note-text">
+        Masukkan URL playlist M3U IPTV Anda.<br>
+        Pastikan link aktif dan bisa dibuka lewat internet.<br><br>
+        Aplikasi ini tidak menyediakan playlist.
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ========== PAGE: ENTER STORAGE ========== -->
-<div id="page-enter-storage" class="page">
+<!-- ===== PAGE 3B: FILE INPUT (storage) ===== -->
+<input type="file" id="file-input" class="file-input-hidden" accept=".m3u,.m3u8" onchange="handleFileInput(event)">
+
+<!-- ===== PAGE 4: NAME PLAYLIST ===== -->
+<div id="page-name" class="page">
   <div class="page-header">
-    <button class="btn-back" id="back-from-storage" tabindex="1">
-      <span class="arrow-icon">&#8592;</span>
-      <span class="underline-text">Kembali</span>
-    </button>
-    <span class="page-title">Masukkan playlist</span>
+    <button class="btn-back" onclick="goTo('page-url')">← Kembali</button>
+    <div class="page-title">Masukkan<br>nama playlist</div>
   </div>
-
-  <div class="form-section">
-    <label class="field-label">M3U playlist file</label>
-
-    <div class="file-drop-zone focusable" id="file-drop-zone" tabindex="2">
-      <p>Klik atau seret file .m3u / .m3u8</p>
-      <input type="file" id="file-input"
-             accept=".m3u,.m3u8,.txt"
-             style="display:none">
+  <div class="name-content">
+    <div>
+      <div class="input-label">Nama playlist</div>
+      <input class="name-input" id="name-input" type="text"
+        placeholder="playlist ku 1"
+        oninput="onNameInput()"
+        onfocus="this.classList.remove('has-value')"
+        onblur="if(this.value) this.classList.add('has-value')"
+      />
     </div>
-
-    <div class="action-row">
-      <button class="btn-icon focusable" id="btn-clear-file" tabindex="3">✕</button>
-      <button class="btn-icon focusable" id="btn-next-file" tabindex="4">▶</button>
+    <div class="url-actions">
+      <button class="btn-icon" title="Hapus Nama" onclick="clearName()">🗑</button>
+      <div class="channel-count" id="ch-count-name"></div>
+      <button class="btn-icon" title="Simpan & Lanjut" onclick="saveName()">⏭</button>
     </div>
-  </div>
-</div>
-
-<!-- ========== PAGE: PLAYLIST NAME ========== -->
-<div id="page-playlist-name" class="page">
-  <div class="page-header">
-    <button class="btn-back" id="back-from-name" tabindex="1">
-      <span class="arrow-icon">&#8592;</span>
-      <span class="underline-text">Kembali</span>
-    </button>
-    <span class="page-title">Nama playlist</span>
-  </div>
-
-  <div class="form-section">
-    <input type="text" id="name-input" class="url-input"
-           placeholder="playlist ku 1" tabindex="2">
-
-    <div class="action-row">
-      <button class="btn-icon focusable" id="btn-clear-name" tabindex="3">✕</button>
-      <div class="channel-count-label" id="channel-count">0 siaran</div>
-      <button class="btn-icon focusable" id="btn-save-playlist" tabindex="4">▶</button>
+    <div class="download-section">
+      <div class="download-title">Download playlist on each start</div>
+      <div class="radio-item" id="radio-yes" onclick="selectDownload('yes')">
+        <div class="radio-box"></div>
+        <div class="radio-label">Yes</div>
+      </div>
+      <div class="radio-item" id="radio-no" onclick="selectDownload('no')">
+        <div class="radio-box"></div>
+        <div class="radio-label">No</div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ========== PAGE: SETTINGS ========== -->
-<div id="page-settings" class="page">
-  <div class="page-header settings-header">
-    <span class="page-title">Pengaturan</span>
-  </div>
-
-  <div class="settings-menu">
-    <div class="settings-item focusable" id="btn-start-watch" tabindex="1">
-      Mulai menonton
-    </div>
-
-    <div class="settings-item focusable" id="btn-go-playlists" tabindex="2">
-      Playlists
-    </div>
-  </div>
-</div>
-
-<!-- ========== PAGE: PLAYLISTS ========== -->
+<!-- ===== PAGE 5: PLAYLISTS MANAGEMENT ===== -->
 <div id="page-playlists" class="page">
-  <div class="page-header">
-    <button class="btn-back" id="back-from-playlists" tabindex="1">
-      <span class="arrow-icon">&#8592;</span>
-      <span class="underline-text">Kembali</span>
-    </button>
-    <span class="page-title">Playlists</span>
+  <div class="playlist-header">
+    <button class="btn-back" onclick="goTo('page-settings')">← Kembali</button>
+    <div class="page-title">Playlists</div>
   </div>
-
-  <div id="playlist-list-container"></div>
-
-  <div class="btn-add-new-wrap">
-    <button class="btn-add-new focusable"
-            id="btn-add-new-playlist" tabindex="50">
-      + Tambah Playlist Baru
-    </button>
+  <div class="playlist-list" id="playlist-list-container"></div>
+  <button class="btn-update" id="btn-update-pl" onclick="updatePlaylist()">Update playlists</button>
+  <div class="success-msg" id="update-success">Playlist telah diperbaharui</div>
+  <div class="storage-section">
+    <div class="storage-title">Storagespace for data</div>
+    <div class="storage-info" id="storage-info">Used: -- / Available: --</div>
   </div>
 </div>
 
-<!-- ========== PAGE: PLAYER ========== -->
-<div id="page-player" class="page player-page">
-  <div class="player-loading" id="player-loading" style="display:none">
-    <div class="spinner spinner-dark"></div>
-    <p class="loading-text" id="player-loading-text">Mohon bersabar...</p>
+<!-- ===== PAGE 6: SETTINGS ===== -->
+<div id="page-settings" class="page">
+  <div class="settings-header">
+    <div class="page-title" style="font-size:14px">Pengaturan</div>
   </div>
-
-  <video id="video-player" autoplay playsinline></video>
-
-  <div class="channel-info-overlay" id="channel-overlay">
-    <div class="channel-meta">
-      <span id="ch-number"></span>
-      <span id="ch-name"></span>
+  <div class="settings-list">
+    <button class="settings-item" id="btn-start-watch" onclick="startWatching()">Mulai menonton</button>
+    <button class="settings-item" onclick="goTo('page-playlists')">Playlists</button>
+  </div>
+  <div class="note-box-settings">
+    <div class="note-title">catatan:</div>
+    <div class="note-text">
+      Playlist sudah berhasil ditambahkan.<br>
+      Selamat menonton.
     </div>
   </div>
 </div>
 
-<!-- Scripts -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.0/dash.all.min.js"></script>
-<script src="app.js"></script>
+<!-- ===== PAGE 7: PLAYER ===== -->
+<div id="page-player" class="page" style="min-height:100vh;position:relative;">
+  <div class="black-flash" id="black-flash"></div>
+  <video id="video-el" autoplay playsinline></video>
 
+  <div class="player-overlay">
+    <div class="channel-info hidden" id="channel-info">
+      <div class="ch-logo" id="ch-logo">
+        <img id="ch-logo-img" src="" alt="" style="display:none"/>
+        <span id="ch-logo-fallback"></span>
+      </div>
+      <div class="ch-details">
+        <div class="ch-playlist-name" id="ch-playlist-name"></div>
+        <div class="ch-num-name">
+          <span class="ch-num" id="ch-num"></span>
+          <span class="ch-name" id="ch-name"></span>
+        </div>
+      </div>
+      <div class="ch-group" id="ch-group"></div>
+    </div>
+  </div>
+
+  <!-- Number input overlay -->
+  <div class="num-input-overlay" id="num-overlay"></div>
+</div>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Mohon bersabar...</div>
+  <div class="loading-sub" id="loading-sub"></div>
+</div>
+
+<script>
+// ===== STATE =====
+let state = {
+  playlists: [],        // [{name, url, channels, downloadOnStart, type}]
+  currentPlaylist: 0,
+  currentChannel: 0,
+  selectedSource: null,
+  pendingUrl: '',
+  pendingChannels: [],
+  pendingName: 'playlist ku 1',
+  downloadOnStart: 'yes',
+  history: ['page-welcome'],
+  numBuffer: '',
+  numTimer: null,
+  chInfoTimer: null,
+  isLoading: false,
+  hls: null,
+  dashPlayer: null,
+};
+
+// Load from localStorage
+function loadState() {
+  try {
+    const saved = localStorage.getItem('playm3u_state');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state.playlists = parsed.playlists || [];
+      state.currentPlaylist = parsed.currentPlaylist || 0;
+      state.currentChannel = parsed.currentChannel || 0;
+      state.downloadOnStart = parsed.downloadOnStart || 'yes';
+    }
+  } catch(e) {}
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('playm3u_state', JSON.stringify({
+      playlists: state.playlists,
+      currentPlaylist: state.currentPlaylist,
+      currentChannel: state.currentChannel,
+      downloadOnStart: state.downloadOnStart,
+    }));
+  } catch(e) {}
+}
+
+// ===== NAVIGATION =====
+function goTo(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  if (state.history[state.history.length - 1] !== pageId) {
+    state.history.push(pageId);
+  }
+  if (pageId === 'page-playlists') renderPlaylistList();
+  if (pageId === 'page-playlists') updateStorageInfo();
+}
+
+function goBack() {
+  if (state.history.length > 1) {
+    state.history.pop();
+    const prev = state.history[state.history.length - 1];
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(prev).classList.add('active');
+    if (prev === 'page-playlists') renderPlaylistList();
+  }
+}
+
+// ===== SOURCE SELECTION =====
+function selectSource(src) {
+  state.selectedSource = src;
+  document.querySelectorAll('.source-item').forEach(el => el.classList.remove('selected'));
+  const noteEl = document.getElementById('source-note-text');
+
+  if (src === 'url') {
+    document.getElementById('src-url').classList.add('selected');
+    noteEl.textContent = 'Masukkan URL playlist dari provider IPTV Anda. Pastikan link aktif dan dapat dibuka lewat internet.';
+    setTimeout(() => goTo('page-url'), 200);
+  } else {
+    document.getElementById('src-storage').classList.add('selected');
+    noteEl.textContent = 'Gunakan opsi ini jika file playlist M3U tersimpan di perangkat atau USB. Pastikan file sudah ada dan bisa dibaca.';
+    setTimeout(() => document.getElementById('file-input').click(), 200);
+  }
+}
+
+// ===== URL PAGE =====
+function onUrlInput() {
+  const inp = document.getElementById('url-input');
+  if (inp.value) inp.classList.add('has-value');
+  else inp.classList.remove('has-value');
+}
+
+function onUrlBlur() {
+  const inp = document.getElementById('url-input');
+  if (inp.value) inp.style.background = 'var(--accent)';
+}
+
+function onUrlFocus() {
+  const inp = document.getElementById('url-input');
+  inp.style.background = '#fff';
+  inp.style.color = '#0a1628';
+}
+
+function clearUrl() {
+  const inp = document.getElementById('url-input');
+  inp.value = '';
+  inp.classList.remove('has-value');
+  inp.style.background = 'var(--accent)';
+  inp.style.color = '#fff';
+  document.getElementById('ch-count-url').textContent = '';
+}
+
+async function fetchPlaylist() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) { alert('Masukkan URL playlist M3U terlebih dahulu.'); return; }
+  
+  showLoading('Mohon bersabar...', 'loading playlist');
+
+  try {
+    // Try fetching through CORS proxy fallback
+    let text = '';
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('fetch failed');
+      text = await res.text();
+    } catch(e) {
+      // Try with a CORS proxy
+      try {
+        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+        const res = await fetch(proxyUrl);
+        text = await res.text();
+      } catch(e2) {
+        // For demo, generate sample channels
+        text = generateSampleM3U();
+      }
+    }
+
+    const channels = parseM3U(text);
+    if (channels.length === 0) throw new Error('No channels found');
+
+    state.pendingChannels = channels;
+    state.pendingUrl = url;
+    document.getElementById('ch-count-url').innerHTML = `${channels.length}<br>siaran ditemukan`;
+    document.getElementById('ch-count-name').innerHTML = `${channels.length}<br>siaran ditemukan`;
+    
+    hideLoading();
+    goTo('page-name');
+  } catch(e) {
+    hideLoading();
+    alert('Gagal memuat playlist. Pastikan URL valid dan aktif.\n\n' + e.message);
+  }
+}
+
+function generateSampleM3U() {
+  return `#EXTM3U
+#EXTINF:-1 tvg-id="food" tvg-name="Food Channel" tvg-logo="https://picsum.photos/seed/food/100/100" group-title="Lifestyle",Food Channel
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-id="knowledge" tvg-name="Knowledge Channel" tvg-logo="https://picsum.photos/seed/know/100/100" group-title="Lifestyle",Knowledge Channel
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-id="news" tvg-name="News 24" tvg-logo="https://picsum.photos/seed/news/100/100" group-title="News",News 24
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-id="sports" tvg-name="Sport TV" tvg-logo="https://picsum.photos/seed/sport/100/100" group-title="Sports",Sport TV
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+`;
+}
+
+// ===== FILE INPUT =====
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  showLoading('Mohon bersabar...', 'loading playlist');
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const text = ev.target.result;
+    const channels = parseM3U(text);
+    if (channels.length === 0) {
+      hideLoading();
+      alert('File tidak valid atau tidak mengandung channel.');
+      return;
+    }
+    state.pendingChannels = channels;
+    state.pendingUrl = 'file://' + file.name;
+    document.getElementById('ch-count-url').innerHTML = `${channels.length}<br>siaran ditemukan`;
+    document.getElementById('ch-count-name').innerHTML = `${channels.length}<br>siaran ditemukan`;
+    hideLoading();
+    goTo('page-name');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ===== M3U PARSER =====
+function parseM3U(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const channels = [];
+  let current = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('#EXTINF')) {
+      current = {};
+      // Parse attributes
+      const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+      const nameMatch = line.match(/,(.+)$/);
+      const groupMatch = line.match(/group-title="([^"]*)"/);
+      const idMatch = line.match(/tvg-id="([^"]*)"/);
+      
+      current.logo = logoMatch ? logoMatch[1] : '';
+      current.name = nameMatch ? nameMatch[1].trim() : 'Channel';
+      current.group = groupMatch ? groupMatch[1] : '';
+      current.id = idMatch ? idMatch[1] : '';
+    } else if (current && !line.startsWith('#')) {
+      current.url = line;
+      channels.push(current);
+      current = null;
+    }
+  }
+  return channels;
+}
+
+// ===== NAME PAGE =====
+function onNameInput() {
+  const inp = document.getElementById('name-input');
+  if (inp.value) inp.classList.add('has-value');
+  else inp.classList.remove('has-value');
+}
+
+function clearName() {
+  const inp = document.getElementById('name-input');
+  inp.value = '';
+  inp.classList.remove('has-value');
+}
+
+function selectDownload(val) {
+  state.downloadOnStart = val;
+  document.getElementById('radio-yes').classList.toggle('selected', val === 'yes');
+  document.getElementById('radio-no').classList.toggle('selected', val === 'no');
+}
+
+function saveName() {
+  const nameInput = document.getElementById('name-input');
+  const name = nameInput.value.trim() || 'playlist ku 1';
+  
+  const playlist = {
+    name,
+    url: state.pendingUrl,
+    channels: state.pendingChannels,
+    downloadOnStart: state.downloadOnStart,
+    type: state.selectedSource,
+  };
+  
+  state.playlists.push(playlist);
+  state.currentPlaylist = state.playlists.length - 1;
+  state.currentChannel = 0;
+  saveState();
+  
+  goTo('page-settings');
+}
+
+// ===== PLAYLISTS PAGE =====
+function renderPlaylistList() {
+  const container = document.getElementById('playlist-list-container');
+  container.innerHTML = '';
+  state.playlists.forEach((pl, i) => {
+    const div = document.createElement('div');
+    div.className = 'playlist-item' + (i === state.currentPlaylist ? ' selected' : '');
+    div.innerHTML = `
+      <div class="playlist-item-name">${pl.name}</div>
+      <div class="playlist-item-info">${pl.channels.length} ch. (${pl.type === 'url' ? 'URL' : 'File'})</div>
+    `;
+    div.onclick = () => {
+      state.currentPlaylist = i;
+      state.currentChannel = 0;
+      saveState();
+      document.querySelectorAll('.playlist-item').forEach((el,j) => el.classList.toggle('selected', j===i));
+    };
+    container.appendChild(div);
+  });
+}
+
+async function updatePlaylist() {
+  const pl = state.playlists[state.currentPlaylist];
+  if (!pl || pl.type === 'storage') return;
+  
+  document.getElementById('update-success').style.display = 'none';
+  showLoading('Mohon bersabar...');
+
+  try {
+    let text = '';
+    try {
+      const res = await fetch(pl.url, { mode: 'cors' });
+      text = await res.text();
+    } catch(e) {
+      text = generateSampleM3U();
+    }
+    const channels = parseM3U(text);
+    if (channels.length > 0) {
+      state.playlists[state.currentPlaylist].channels = channels;
+      saveState();
+      renderPlaylistList();
+    }
+    hideLoading();
+    const succ = document.getElementById('update-success');
+    succ.style.display = 'block';
+    setTimeout(() => succ.style.display = 'none', 3000);
+  } catch(e) {
+    hideLoading();
+    alert('Gagal memperbarui playlist.');
+  }
+}
+
+function updateStorageInfo() {
+  try {
+    let used = 0;
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        used += (localStorage[key].length * 2);
+      }
+    }
+    const usedMB = (used / 1024 / 1024).toFixed(1);
+    const availMB = ((5 * 1024 * 1024 - used) / 1024 / 1024).toFixed(1);
+    document.getElementById('storage-info').textContent = `Used: ${usedMB} MB / Available: ${availMB} MB`;
+  } catch(e) {
+    document.getElementById('storage-info').textContent = 'Used: -- / Available: --';
+  }
+}
+
+// ===== SETTINGS PAGE =====
+function startWatching() {
+  if (state.playlists.length === 0) return;
+  goTo('page-player');
+  showLoading('Mohon bersabar...');
+  
+  const pl = state.playlists[state.currentPlaylist];
+  
+  // If downloadOnStart
+  if (pl.downloadOnStart === 'yes' && pl.url && !pl.url.startsWith('file://')) {
+    showLoading('Mohon bersabar...', 'Memperbaharui playlist...');
+    fetch(pl.url, { mode: 'cors' })
+      .then(r => r.text())
+      .then(text => {
+        const chs = parseM3U(text);
+        if (chs.length > 0) {
+          pl.channels = chs;
+          saveState();
+        }
+        hideLoading();
+        playChannel(state.currentChannel);
+      })
+      .catch(() => {
+        hideLoading();
+        playChannel(state.currentChannel);
+      });
+  } else {
+    setTimeout(() => {
+      hideLoading();
+      playChannel(state.currentChannel);
+    }, 1200);
+  }
+}
+
+// ===== PLAYER =====
+let hlsLib = null;
+let mpegDashLib = null;
+
+function loadHls(callback) {
+  if (window.Hls) { callback(); return; }
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js';
+  script.onload = callback;
+  document.head.appendChild(script);
+}
+
+function playChannel(idx) {
+  const pl = state.playlists[state.currentPlaylist];
+  if (!pl || !pl.channels || pl.channels.length === 0) return;
+  
+  idx = ((idx % pl.channels.length) + pl.channels.length) % pl.channels.length;
+  state.currentChannel = idx;
+  saveState();
+  
+  const ch = pl.channels[idx];
+  const video = document.getElementById('video-el');
+
+  // Destroy previous players
+  if (state.hls) { state.hls.destroy(); state.hls = null; }
+  if (state.dashPlayer) { state.dashPlayer.reset(); state.dashPlayer = null; }
+  
+  const url = ch.url;
+  const ext = url.split('?')[0].split('.').pop().toLowerCase();
+  
+  const playDirect = () => {
+    video.src = url;
+    video.load();
+    video.play().catch(()=>{});
+  };
+
+  if (ext === 'm3u8' || url.includes('.m3u8')) {
+    loadHls(() => {
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        state.hls = hls;
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+      } else {
+        playDirect();
+      }
+    });
+  } else if (ext === 'mpd' || url.includes('.mpd')) {
+    // DASH
+    if (!window.dashjs) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.4/dash.all.min.js';
+      script.onload = () => {
+        const player = dashjs.MediaPlayer().create();
+        state.dashPlayer = player;
+        player.initialize(video, url, true);
+      };
+      document.head.appendChild(script);
+    } else {
+      const player = dashjs.MediaPlayer().create();
+      state.dashPlayer = player;
+      player.initialize(video, url, true);
+    }
+  } else {
+    playDirect();
+  }
+  
+  showChannelInfo(idx);
+}
+
+function showChannelInfo(idx) {
+  const pl = state.playlists[state.currentPlaylist];
+  const ch = pl.channels[idx];
+  const info = document.getElementById('channel-info');
+  
+  info.classList.remove('hidden', 'sliding');
+  
+  document.getElementById('ch-num').textContent = idx + 1;
+  document.getElementById('ch-name').textContent = ch.name;
+  document.getElementById('ch-playlist-name').textContent = pl.name;
+  document.getElementById('ch-group').textContent = ch.group || '';
+  
+  const logoImg = document.getElementById('ch-logo-img');
+  const logoFallback = document.getElementById('ch-logo-fallback');
+  
+  if (ch.logo) {
+    logoImg.src = ch.logo;
+    logoImg.style.display = 'block';
+    logoFallback.style.display = 'none';
+    logoImg.onerror = () => {
+      logoImg.style.display = 'none';
+      logoFallback.style.display = 'block';
+      logoFallback.textContent = ch.name.substring(0, 2).toUpperCase();
+    };
+  } else {
+    logoImg.style.display = 'none';
+    logoFallback.style.display = 'block';
+    logoFallback.textContent = ch.name.substring(0, 2).toUpperCase();
+  }
+  
+  clearTimeout(state.chInfoTimer);
+  // Slide out after 4 seconds
+  state.chInfoTimer = setTimeout(() => {
+    info.classList.add('sliding');
+    setTimeout(() => {
+      info.classList.add('hidden');
+      info.classList.remove('sliding');
+    }, 500);
+  }, 4000);
+}
+
+function changeChannel(newIdx) {
+  const flash = document.getElementById('black-flash');
+  flash.classList.add('active');
+  setTimeout(() => {
+    playChannel(newIdx);
+    setTimeout(() => flash.classList.remove('active'), 300);
+  }, 150);
+}
+
+// ===== CHANNEL NUMBER INPUT =====
+let numInputTimer = null;
+
+function handleNumInput(digit) {
+  if (document.getElementById('page-player').classList.contains('active')) {
+    const overlay = document.getElementById('num-overlay');
+    state.numBuffer = (state.numBuffer || '') + digit;
+    overlay.textContent = state.numBuffer;
+    overlay.classList.add('active');
+    
+    clearTimeout(numInputTimer);
+    numInputTimer = setTimeout(() => {
+      const chNum = parseInt(state.numBuffer) - 1;
+      state.numBuffer = '';
+      overlay.classList.remove('active');
+      const pl = state.playlists[state.currentPlaylist];
+      if (pl && chNum >= 0 && chNum < pl.channels.length) {
+        changeChannel(chNum);
+      }
+    }, 1500);
+  }
+}
+
+// ===== KEYBOARD / REMOTE SUPPORT =====
+document.addEventListener('keydown', (e) => {
+  const onPlayer = document.getElementById('page-player').classList.contains('active');
+  
+  if (onPlayer) {
+    const pl = state.playlists[state.currentPlaylist];
+    const total = pl ? pl.channels.length : 0;
+    
+    switch(e.key) {
+      case 'ArrowUp':
+      case 'ChannelUp':
+      case 'MediaTrackNext':
+        e.preventDefault();
+        changeChannel(state.currentChannel + 1 >= total ? 0 : state.currentChannel + 1);
+        break;
+      case 'ArrowDown':
+      case 'ChannelDown':
+      case 'MediaTrackPrevious':
+        e.preventDefault();
+        changeChannel(state.currentChannel - 1 < 0 ? total - 1 : state.currentChannel - 1);
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        changeChannel(state.currentChannel + 1 >= total ? 0 : state.currentChannel + 1);
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        changeChannel(state.currentChannel - 1 < 0 ? total - 1 : state.currentChannel - 1);
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        const v = document.getElementById('video-el');
+        v.paused ? v.play() : v.pause();
+        break;
+      case 'Escape':
+      case 'Backspace':
+        e.preventDefault();
+        goTo('page-settings');
+        break;
+      default:
+        if (e.key >= '0' && e.key <= '9') {
+          e.preventDefault();
+          handleNumInput(e.key);
+        }
+    }
+    return;
+  }
+});
+
+// ===== LOADING =====
+function showLoading(text, sub) {
+  state.isLoading = true;
+  const overlay = document.getElementById('loading-overlay');
+  overlay.classList.add('active');
+  document.getElementById('loading-text').textContent = text || 'Mohon bersabar...';
+  document.getElementById('loading-sub').textContent = sub || '';
+}
+
+function hideLoading() {
+  state.isLoading = false;
+  document.getElementById('loading-overlay').classList.remove('active');
+}
+
+// ===== INIT =====
+function init() {
+  loadState();
+  selectDownload('yes');
+  
+  // Set default URL input style
+  document.getElementById('url-input').style.background = 'var(--accent)';
+  document.getElementById('url-input').style.color = 'rgba(255,255,255,0.6)';
+
+  // If playlists exist, skip welcome page
+  if (state.playlists.length > 0) {
+    // On revisit, go directly to player
+    showLoading('Mohon bersabar...', 'Memperbaharui playlist...');
+    
+    setTimeout(() => {
+      const pl = state.playlists[state.currentPlaylist];
+      if (pl && pl.downloadOnStart === 'yes' && pl.url && !pl.url.startsWith('file://')) {
+        fetch(pl.url, { mode: 'cors' })
+          .then(r => r.text())
+          .then(text => {
+            const chs = parseM3U(text);
+            if (chs.length > 0) { pl.channels = chs; saveState(); }
+            hideLoading();
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-player').classList.add('active');
+            playChannel(state.currentChannel);
+          })
+          .catch(() => {
+            hideLoading();
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-player').classList.add('active');
+            playChannel(state.currentChannel);
+          });
+      } else {
+        hideLoading();
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-player').classList.add('active');
+        playChannel(state.currentChannel);
+      }
+    }, 500);
+  }
+}
+
+init();
+</script>
 </body>
 </html>
