@@ -1070,7 +1070,7 @@ function clearUrl() {
 // ===== CORS PROXY FETCH =====
 const CORS_PROXIES = [
   url => url,  // direct first
-  url => `https://cors-proxy.nubuuys77.workers.dev/?url=${encodeURIComponent(url)}`
+  url => `https://cors-proxy.nubuuys77.workers.dev/?url=${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url => `https://cors-anywhere.herokuapp.com/${url}`,
   url => `https://thingproxy.freeboard.io/fetch/${url}`,
