@@ -780,6 +780,201 @@
   .black-flash.active { opacity: 1; }
 
   .file-input-hidden { display: none; }
+
+  /* ===== CHANNEL LIST PANEL (swipe kiri) ===== */
+  .ch-list-panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: 85%;
+    max-width: 360px;
+    height: 100%;
+    background: rgba(10, 22, 40, 0.97);
+    backdrop-filter: blur(16px);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -8px 0 40px rgba(0,0,0,0.7);
+  }
+
+  .ch-list-panel.open {
+    transform: translateX(0);
+  }
+
+  .ch-list-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 49;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .ch-list-backdrop.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .ch-list-header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+
+  .ch-list-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-orange);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .ch-list-search {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: #fff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .ch-list-search:focus {
+    border-color: var(--accent);
+    background: rgba(255,255,255,0.12);
+  }
+
+  .ch-list-search::placeholder {
+    color: rgba(255,255,255,0.35);
+  }
+
+  .ch-list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ch-list-scroll::-webkit-scrollbar { width: 3px; }
+  .ch-list-scroll::-webkit-scrollbar-track { background: transparent; }
+  .ch-list-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  .ch-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ch-list-item:hover,
+  .ch-list-item:active {
+    background: rgba(200, 133, 26, 0.25);
+  }
+
+  .ch-list-item.active-ch {
+    background: rgba(200, 133, 26, 0.35);
+    border-left: 3px solid var(--accent);
+  }
+
+  .ch-list-num {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    min-width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .ch-list-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.07);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 700;
+  }
+
+  .ch-list-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ch-list-info { flex: 1; min-width: 0; }
+
+  .ch-list-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ch-list-group {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Swipe hint indicator */
+  .swipe-hint {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(8px);
+    border-radius: 30px;
+    padding: 8px 18px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+    white-space: nowrap;
+  }
+
+  .swipe-hint.show { opacity: 1; }
+
+  /* Gesture feedback arc */
+  .swipe-feedback {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 32px;
+    z-index: 25;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .swipe-feedback.show { opacity: 1; }
+  .swipe-feedback.top { top: 80px; }
+  .swipe-feedback.bottom { bottom: 80px; }
+
+  /* Only show on touch devices */
+  @media (hover: hover) and (pointer: fine) {
+    .swipe-hint { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -1011,6 +1206,9 @@ function goTo(pageId) {
   }
   if (pageId === 'page-playlists') renderPlaylistList();
   if (pageId === 'page-playlists') updateStorageInfo();
+  if (pageId === 'page-player') showSwipeHint();
+  // Close channel list when navigating away from player
+  if (pageId !== 'page-player') closeChannelList();
 }
 
 function goBack() {
@@ -1069,32 +1267,44 @@ function clearUrl() {
 
 // ===== CORS PROXY FETCH =====
 const CORS_PROXIES = [
-  url => url,  // direct first
-  url => `https://cors-proxy.nubuuys77.workers.dev/?url=${encodeURIComponent(url)}`,
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://cors-anywhere.herokuapp.com/${url}`,
-  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+  { fn: url => url,                                                                          timeout: 6000  },
+  { fn: url => `https://cors-proxy.nubuuys77.workers.dev/?url=${encodeURIComponent(url)}`,  timeout: 10000 },
+  { fn: url => `https://corsproxy.io/?${encodeURIComponent(url)}`,                          timeout: 8000  },
+  { fn: url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,             timeout: 8000  },
 ];
 
+async function fetchWithProxy(proxyFn, url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const proxyUrl = proxyFn(url);
+    const res = await fetch(proxyUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (res.status === 408 || res.status === 503 || res.status === 429) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text || text.trim().length === 0) throw new Error('Empty response');
+    return text;
+  } catch(e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
 async function fetchWithCorsProxy(url) {
-  for (let i = 0; i < CORS_PROXIES.length; i++) {
-    const proxyUrl = CORS_PROXIES[i](url);
+  let lastError = null;
+  for (const proxy of CORS_PROXIES) {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(proxyUrl, {
-        signal: controller.signal,
-        mode: i === 0 ? 'cors' : 'cors',
-      });
-      clearTimeout(timeout);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      if (text && text.trim().length > 0) return text;
+      const text = await fetchWithProxy(proxy.fn, url, proxy.timeout);
+      return text;
     } catch(e) {
-      // try next proxy
-      if (i === CORS_PROXIES.length - 1) throw new Error('Semua proxy gagal: ' + e.message);
+      lastError = e;
+      console.warn(`Proxy gagal: ${e.message}`);
     }
   }
+  throw new Error('Semua proxy gagal. Error terakhir: ' + lastError?.message);
 }
 
 async function fetchPlaylist() {
@@ -1315,15 +1525,18 @@ function startWatching() {
         }
         hideLoading();
         playChannel(state.currentChannel);
+        showSwipeHint();
       })
       .catch(() => {
         hideLoading();
         playChannel(state.currentChannel);
+        showSwipeHint();
       });
   } else {
     setTimeout(() => {
       hideLoading();
       playChannel(state.currentChannel);
+      showSwipeHint();
     }, 1200);
   }
 }
@@ -1528,7 +1741,11 @@ document.addEventListener('keydown', (e) => {
       case 'Escape':
       case 'Backspace':
         e.preventDefault();
-        goTo('page-settings');
+        if (document.getElementById('ch-list-panel').classList.contains('open')) {
+          closeChannelList();
+        } else {
+          goTo('page-settings');
+        }
         break;
       default:
         if (e.key >= '0' && e.key <= '9') {
@@ -1553,6 +1770,164 @@ function hideLoading() {
   state.isLoading = false;
   document.getElementById('loading-overlay').classList.remove('active');
 }
+
+// ===== CHANNEL LIST PANEL =====
+let chListData = [];
+
+function openChannelList() {
+  const pl = state.playlists[state.currentPlaylist];
+  if (!pl) return;
+
+  chListData = pl.channels;
+  document.getElementById('ch-list-pl-name').textContent = pl.name;
+  document.getElementById('ch-list-search').value = '';
+  renderChannelList(chListData);
+
+  document.getElementById('ch-list-panel').classList.add('open');
+  document.getElementById('ch-list-backdrop').classList.add('open');
+
+  // Scroll to active channel
+  setTimeout(() => {
+    const active = document.querySelector('.ch-list-item.active-ch');
+    if (active) active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, 320);
+}
+
+function closeChannelList() {
+  document.getElementById('ch-list-panel').classList.remove('open');
+  document.getElementById('ch-list-backdrop').classList.remove('open');
+  document.getElementById('ch-list-search').value = '';
+}
+
+function renderChannelList(channels) {
+  const scroll = document.getElementById('ch-list-scroll');
+  scroll.innerHTML = '';
+
+  if (channels.length === 0) {
+    scroll.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px;">Tidak ada saluran ditemukan</div>';
+    return;
+  }
+
+  const pl = state.playlists[state.currentPlaylist];
+  const allChannels = pl ? pl.channels : [];
+
+  channels.forEach(ch => {
+    const realIdx = allChannels.indexOf(ch);
+    const isActive = realIdx === state.currentChannel;
+
+    const item = document.createElement('div');
+    item.className = 'ch-list-item' + (isActive ? ' active-ch' : '');
+    item.dataset.idx = realIdx;
+
+    const logoHtml = ch.logo
+      ? `<img src="${ch.logo}" alt="" onerror="this.parentElement.innerHTML='${ch.name.substring(0,2).toUpperCase()}'">`
+      : ch.name.substring(0, 2).toUpperCase();
+
+    item.innerHTML = `
+      <div class="ch-list-num">${realIdx + 1}</div>
+      <div class="ch-list-logo">${logoHtml}</div>
+      <div class="ch-list-info">
+        <div class="ch-list-name">${ch.name}</div>
+        ${ch.group ? `<div class="ch-list-group">${ch.group}</div>` : ''}
+      </div>
+    `;
+
+    item.addEventListener('click', () => {
+      closeChannelList();
+      setTimeout(() => changeChannel(realIdx), 300);
+    });
+
+    scroll.appendChild(item);
+  });
+}
+
+function filterChannelList(query) {
+  const pl = state.playlists[state.currentPlaylist];
+  if (!pl) return;
+  const q = query.toLowerCase().trim();
+  const filtered = q
+    ? pl.channels.filter(ch =>
+        ch.name.toLowerCase().includes(q) ||
+        (ch.group && ch.group.toLowerCase().includes(q))
+      )
+    : pl.channels;
+  renderChannelList(filtered);
+}
+
+// ===== SWIPE GESTURES =====
+(function() {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  const MIN_SWIPE_DIST = 50;   // px minimum
+  const MAX_SWIPE_TIME = 400;  // ms maksimum
+  const MIN_RATIO = 1.5;       // harus lebih dominan satu arah
+
+  function onTouchStart(e) {
+    if (!document.getElementById('page-player').classList.contains('active')) return;
+    // Jangan proses jika panel terbuka
+    if (document.getElementById('ch-list-panel').classList.contains('open')) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }
+
+  function showFeedback(dir) {
+    const el = document.getElementById(dir === 'up' ? 'swipe-up-fb' : 'swipe-down-fb');
+    if (!el) return;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 400);
+  }
+
+  function onTouchEnd(e) {
+    if (!document.getElementById('page-player').classList.contains('active')) return;
+    if (document.getElementById('ch-list-panel').classList.contains('open')) return;
+
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    const dt = Date.now() - touchStartTime;
+
+    if (dt > MAX_SWIPE_TIME) return;
+
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Swipe vertikal (up/down) → ganti channel
+    if (absDy >= MIN_SWIPE_DIST && absDy / Math.max(absDx, 1) >= MIN_RATIO) {
+      const pl = state.playlists[state.currentPlaylist];
+      const total = pl ? pl.channels.length : 0;
+      if (dy < 0) {
+        // Swipe UP → channel berikutnya
+        showFeedback('up');
+        changeChannel(state.currentChannel + 1 >= total ? 0 : state.currentChannel + 1);
+      } else {
+        // Swipe DOWN → channel sebelumnya
+        showFeedback('down');
+        changeChannel(state.currentChannel - 1 < 0 ? total - 1 : state.currentChannel - 1);
+      }
+      return;
+    }
+
+    // Swipe horizontal kiri → buka channel list
+    if (absDx >= MIN_SWIPE_DIST && absDx / Math.max(absDy, 1) >= MIN_RATIO && dx < 0) {
+      openChannelList();
+    }
+    // Swipe kanan → tutup channel list jika terbuka (handled by panel)
+  }
+
+  document.addEventListener('touchstart', onTouchStart, { passive: true });
+  document.addEventListener('touchend', onTouchEnd, { passive: true });
+})();
+
+// ===== SWIPE HINT (shown once on first player open) =====
+function showSwipeHint() {
+  if (!('ontouchstart' in window)) return; // only on touch devices
+  const hint = document.getElementById('swipe-hint');
+  if (!hint) return;
+  hint.classList.add('show');
+  setTimeout(() => hint.classList.remove('show'), 3000);
+}
+
 
 // ===== INIT =====
 function init() {
@@ -1598,5 +1973,26 @@ function init() {
 
 init();
 </script>
+
+<!-- ===== CHANNEL LIST PANEL ===== -->
+<div class="ch-list-backdrop" id="ch-list-backdrop" onclick="closeChannelList()"></div>
+<div class="ch-list-panel" id="ch-list-panel">
+  <div class="ch-list-header">
+    <div class="ch-list-title" id="ch-list-pl-name">Semua Saluran</div>
+    <input class="ch-list-search" id="ch-list-search" type="text"
+      placeholder="Cari saluran..."
+      oninput="filterChannelList(this.value)"
+      autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/>
+  </div>
+  <div class="ch-list-scroll" id="ch-list-scroll"></div>
+</div>
+
+<!-- Swipe feedback icons -->
+<div class="swipe-feedback top" id="swipe-up-fb">⬆</div>
+<div class="swipe-feedback bottom" id="swipe-down-fb">⬇</div>
+
+<!-- Swipe hint (shown briefly on first open player) -->
+<div class="swipe-hint" id="swipe-hint">↑↓ ganti channel &nbsp;|&nbsp; ← daftar saluran</div>
+
 </body>
 </html>
