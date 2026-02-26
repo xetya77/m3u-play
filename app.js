@@ -1,6 +1,6 @@
 'use strict';
 
-/* ───────────────── STORAGE ───────────────── */
+/* ───────── STORAGE ───────── */
 const DB_KEY_PLAYLISTS = 'playm3u_playlists';
 const DB_KEY_LAST_CH   = 'playm3u_last_ch';
 const DB_KEY_LAST_PL   = 'playm3u_last_pl';
@@ -15,7 +15,7 @@ function loadDB(key, def) {
   } catch { return def; }
 }
 
-/* ───────────────── FETCH TIMEOUT ───────────────── */
+/* ───────── FETCH TIMEOUT ───────── */
 async function fetchWithTimeout(resource, options = {}, timeout = 15000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -27,41 +27,29 @@ async function fetchWithTimeout(resource, options = {}, timeout = 15000) {
   }
 }
 
-/* ───────────────── STATE ───────────────── */
+/* ───────── STATE ───────── */
 const state = {
   playlists: [],
-  currentPLIndex: 0,
-  currentCHIndex: 0,
-  hlsInstance: null,
-  dashInstance: null,
-  overlayTimer: null,
+  pendingURL: '',
+  pendingChannels: [],
+  pendingType: 'url',
 };
 
-/* ───────────────── DOM CACHE ───────────────── */
+/* ───────── DOM ───────── */
 const pages = {
-  welcome:     document.getElementById('page-welcome'),
-  chooseType:  document.getElementById('page-choose-type'),
-  enterURL:    document.getElementById('page-enter-url'),
-  enterStorage:document.getElementById('page-enter-storage'),
-  name:        document.getElementById('page-playlist-name'),
-  settings:    document.getElementById('page-settings'),
-  playlists:   document.getElementById('page-playlists'),
-  player:      document.getElementById('page-player'),
+  welcome: document.getElementById('page-welcome'),
+  chooseType: document.getElementById('page-choose-type'),
+  enterURL: document.getElementById('page-enter-url'),
+  enterStorage: document.getElementById('page-enter-storage'),
+  name: document.getElementById('page-playlist-name'),
 };
 
-const video = document.getElementById('video-player');
-
-/* ───────────────── PAGE SWITCHER ───────────────── */
 function showPage(key) {
   Object.values(pages).forEach(p => p?.classList.remove('active'));
   pages[key]?.classList.add('active');
-
-  setTimeout(() => {
-    pages[key]?.querySelector('.focusable, button, input')?.focus();
-  }, 60);
 }
 
-/* ───────────────── TOAST ───────────────── */
+/* ───────── TOAST ───────── */
 let toastEl;
 function showToast(msg, dur = 2500) {
   if (!toastEl) {
@@ -69,15 +57,13 @@ function showToast(msg, dur = 2500) {
     toastEl.className = 'toast';
     document.body.appendChild(toastEl);
   }
-
   toastEl.textContent = msg;
   toastEl.classList.add('show');
-
   clearTimeout(toastEl._t);
   toastEl._t = setTimeout(() => toastEl.classList.remove('show'), dur);
 }
 
-/* ───────────────── M3U PARSER ───────────────── */
+/* ───────── PARSER ───────── */
 function parseM3U(text) {
   const lines = text.split(/\r?\n/);
   const channels = [];
@@ -92,9 +78,6 @@ function parseM3U(text) {
       const nameIdx = line.lastIndexOf(',');
       if (nameIdx !== -1) current.name = line.slice(nameIdx + 1).trim();
 
-      const logoM = line.match(/tvg-logo="([^"]+)"/i);
-      if (logoM) current.logo = logoM[1];
-
       const groupM = line.match(/group-title="([^"]+)"/i);
       if (groupM) current.group = groupM[1];
 
@@ -108,7 +91,7 @@ function parseM3U(text) {
   return channels;
 }
 
-/* ───────────────── FETCH PLAYLIST ───────────────── */
+/* ───────── FETCH PLAYLIST ───────── */
 async function fetchM3U(url) {
   const attempts = [
     url,
@@ -130,119 +113,142 @@ async function fetchM3U(url) {
   throw new Error('Playlist gagal dimuat');
 }
 
-/* ───────────────── INIT ───────────────── */
-function init() {
-  state.playlists = loadDB(DB_KEY_PLAYLISTS, []);
-  state.currentPLIndex = loadDB(DB_KEY_LAST_PL, 0);
-  state.currentCHIndex = loadDB(DB_KEY_LAST_CH, 0);
+/* ───────── BUTTON BINDINGS ───────── */
+function bindButtons() {
 
-  if (state.playlists.length) {
-    showPage('player');
-    startPlayback();
-  } else {
-    showPage('welcome');
-  }
+  /* Welcome */
+  document.getElementById('btn-add-playlist-welcome')
+    ?.addEventListener('click', () => {
+      showPage('chooseType');
+    });
 
-  bindKeyboard();
-}
+  /* Choose Type */
+  document.getElementById('back-from-choose')
+    ?.addEventListener('click', () => showPage('welcome'));
 
-/* ───────────────── PLAYBACK ───────────────── */
-function startPlayback() {
-  const pl = state.playlists[state.currentPLIndex];
-  if (!pl?.channels?.length) {
-    showToast('Playlist kosong');
-    showPage('settings');
-    return;
-  }
+  document.getElementById('opt-url')
+    ?.addEventListener('click', () => {
+      state.pendingType = 'url';
+      showPage('enterURL');
+    });
 
-  playChannel(state.currentCHIndex);
-}
+  document.getElementById('opt-storage')
+    ?.addEventListener('click', () => {
+      state.pendingType = 'file';
+      showPage('enterStorage');
+    });
 
-function cleanupPlayer() {
-  if (!video) return;
+  /* URL Page */
+  document.getElementById('back-from-url')
+    ?.addEventListener('click', () => showPage('chooseType'));
 
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
+  document.getElementById('btn-clear-url')
+    ?.addEventListener('click', () => {
+      document.getElementById('url-input').value = '';
+    });
 
-  try { state.hlsInstance?.destroy(); } catch {}
-  try { state.dashInstance?.reset(); } catch {}
+  document.getElementById('btn-next-url')
+    ?.addEventListener('click', async () => {
+      const input = document.getElementById('url-input');
+      const url = input.value.trim();
+      if (!url) return showToast('URL kosong');
 
-  state.hlsInstance = null;
-  state.dashInstance = null;
-}
+      try {
+        showToast('Memuat playlist...');
+        const text = await fetchM3U(url);
 
-function playChannel(index) {
-  const pl = state.playlists[state.currentPLIndex];
-  const ch = pl.channels[index];
-  if (!ch || !video) return;
+        state.pendingURL = url;
+        state.pendingChannels = parseM3U(text);
 
-  state.currentCHIndex = index;
-  saveDB(DB_KEY_LAST_CH, index);
+        updateChannelCount();
+        showPage('name');
 
-  cleanupPlayer();
+      } catch (e) {
+        showToast('Gagal load playlist');
+      }
+    });
 
-  const url = ch.url;
-  const isHLS  = url.includes('.m3u8');
-  const isDASH = url.includes('.mpd');
+  /* File Page */
+  const fileInput = document.getElementById('file-input');
+  document.getElementById('file-drop-zone')
+    ?.addEventListener('click', () => fileInput?.click());
 
-  video.onerror = () => showToast(`Error channel`);
+  fileInput?.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  if (isDASH && typeof dashjs !== 'undefined') {
-    const dash = dashjs.MediaPlayer().create();
-    dash.initialize(video, url, true);
-    state.dashInstance = dash;
+    const reader = new FileReader();
 
-  } else if (isHLS && typeof Hls !== 'undefined' && Hls.isSupported()) {
-    const hls = new Hls();
-    hls.loadSource(url);
-    hls.attachMedia(video);
-    state.hlsInstance = hls;
+    reader.onload = () => {
+      try {
+        state.pendingChannels = parseM3U(reader.result);
+        updateChannelCount();
+        showPage('name');
+      } catch {
+        showToast('File tidak valid');
+      }
+    };
 
-  } else {
-    video.src = url;
-  }
-
-  video.play().catch(() => {});
-  showOverlay(ch, index + 1, pl.name);
-}
-
-/* ───────────────── OVERLAY ───────────────── */
-function showOverlay(ch, num, plName) {
-  const nameEl = document.getElementById('ch-name');
-  const numEl  = document.getElementById('ch-number');
-
-  if (nameEl) nameEl.textContent = ch.name;
-  if (numEl)  numEl.textContent = num;
-
-  const overlay = document.getElementById('channel-overlay');
-  if (!overlay) return;
-
-  overlay.style.display = 'flex';
-
-  clearTimeout(state.overlayTimer);
-  state.overlayTimer = setTimeout(() => {
-    overlay.style.display = 'none';
-  }, 3500);
-}
-
-/* ───────────────── KEYBOARD ───────────────── */
-function bindKeyboard() {
-  document.addEventListener('keydown', e => {
-    if (!pages.player?.classList.contains('active')) return;
-
-    if (e.key === 'ArrowUp')   channelUp();
-    if (e.key === 'ArrowDown') channelDown();
+    reader.onerror = () => showToast('Gagal baca file');
+    reader.readAsText(file);
   });
+
+  document.getElementById('back-from-storage')
+    ?.addEventListener('click', () => showPage('chooseType'));
+
+  /* Name Page */
+  document.getElementById('back-from-name')
+    ?.addEventListener('click', () => showPage(
+      state.pendingType === 'url' ? 'enterURL' : 'enterStorage'
+    ));
+
+  document.getElementById('btn-clear-name')
+    ?.addEventListener('click', () => {
+      document.getElementById('name-input').value = '';
+    });
+
+  document.getElementById('btn-save-playlist')
+    ?.addEventListener('click', () => {
+      const name = document.getElementById('name-input').value.trim();
+      if (!name) return showToast('Nama kosong');
+
+      if (!state.pendingChannels.length)
+        return showToast('Channel kosong');
+
+      const playlists = loadDB(DB_KEY_PLAYLISTS, []);
+
+      playlists.push({
+        name,
+        url: state.pendingURL,
+        channels: state.pendingChannels,
+        type: state.pendingType
+      });
+
+      saveDB(DB_KEY_PLAYLISTS, playlists);
+
+      showToast('Playlist disimpan');
+      resetPending();
+      showPage('welcome');
+    });
 }
 
-function channelUp() {
-  const pl = state.playlists[state.currentPLIndex];
-  playChannel((state.currentCHIndex + 1) % pl.channels.length);
+/* ───────── HELPERS ───────── */
+function updateChannelCount() {
+  const el = document.getElementById('channel-count');
+  if (el) el.textContent = `${state.pendingChannels.length} siaran`;
 }
-function channelDown() {
-  const pl = state.playlists[state.currentPLIndex];
-  playChannel((state.currentCHIndex - 1 + pl.channels.length) % pl.channels.length);
+
+function resetPending() {
+  state.pendingURL = '';
+  state.pendingChannels = [];
+  document.getElementById('url-input').value = '';
+  document.getElementById('name-input').value = '';
+}
+
+/* ───────── INIT ───────── */
+function init() {
+  bindButtons();
+  showPage('welcome');
 }
 
 document.addEventListener('DOMContentLoaded', init);
