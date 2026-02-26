@@ -29,19 +29,21 @@ async function fetchWithTimeout(resource, options = {}, timeout = 15000) {
 
 /* ───────── STATE ───────── */
 const state = {
-  playlists: [],
   pendingURL: '',
   pendingChannels: [],
   pendingType: 'url',
+  hls: null,
+  dash: null,
 };
 
-/* ───────── DOM ───────── */
+/* ───────── DOM / PAGE ───────── */
 const pages = {
   welcome: document.getElementById('page-welcome'),
   chooseType: document.getElementById('page-choose-type'),
   enterURL: document.getElementById('page-enter-url'),
   enterStorage: document.getElementById('page-enter-storage'),
   name: document.getElementById('page-playlist-name'),
+  player: document.getElementById('page-player'),
 };
 
 function showPage(key) {
@@ -63,7 +65,7 @@ function showToast(msg, dur = 2500) {
   toastEl._t = setTimeout(() => toastEl.classList.remove('show'), dur);
 }
 
-/* ───────── PARSER ───────── */
+/* ───────── M3U PARSER ───────── */
 function parseM3U(text) {
   const lines = text.split(/\r?\n/);
   const channels = [];
@@ -73,7 +75,7 @@ function parseM3U(text) {
     const line = raw.trim();
 
     if (line.startsWith('#EXTINF:')) {
-      current = { name: 'Channel', group: '', logo: '', url: '' };
+      current = { name: 'Channel', group: '', url: '' };
 
       const nameIdx = line.lastIndexOf(',');
       if (nameIdx !== -1) current.name = line.slice(nameIdx + 1).trim();
@@ -113,16 +115,55 @@ async function fetchM3U(url) {
   throw new Error('Playlist gagal dimuat');
 }
 
+/* ───────── PLAYER ENGINE ───────── */
+function cleanupPlayer() {
+  const video = document.getElementById('video-player');
+  if (!video) return;
+
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+
+  try { state.hls?.destroy(); } catch {}
+  try { state.dash?.reset(); } catch {}
+
+  state.hls = null;
+  state.dash = null;
+}
+
+function playStream(url) {
+  const video = document.getElementById('video-player');
+  if (!video) return;
+
+  cleanupPlayer();
+
+  const isHLS  = url.includes('.m3u8');
+  const isDASH = url.includes('.mpd');
+
+  if (isDASH && typeof dashjs !== 'undefined') {
+    const dash = dashjs.MediaPlayer().create();
+    dash.initialize(video, url, true);
+    state.dash = dash;
+
+  } else if (isHLS && typeof Hls !== 'undefined' && Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    state.hls = hls;
+
+  } else {
+    video.src = url;
+  }
+
+  video.play().catch(() => {});
+}
+
 /* ───────── BUTTON BINDINGS ───────── */
 function bindButtons() {
 
-  /* Welcome */
   document.getElementById('btn-add-playlist-welcome')
-    ?.addEventListener('click', () => {
-      showPage('chooseType');
-    });
+    ?.addEventListener('click', () => showPage('chooseType'));
 
-  /* Choose Type */
   document.getElementById('back-from-choose')
     ?.addEventListener('click', () => showPage('welcome'));
 
@@ -138,19 +179,12 @@ function bindButtons() {
       showPage('enterStorage');
     });
 
-  /* URL Page */
   document.getElementById('back-from-url')
     ?.addEventListener('click', () => showPage('chooseType'));
 
-  document.getElementById('btn-clear-url')
-    ?.addEventListener('click', () => {
-      document.getElementById('url-input').value = '';
-    });
-
   document.getElementById('btn-next-url')
     ?.addEventListener('click', async () => {
-      const input = document.getElementById('url-input');
-      const url = input.value.trim();
+      const url = document.getElementById('url-input').value.trim();
       if (!url) return showToast('URL kosong');
 
       try {
@@ -163,12 +197,11 @@ function bindButtons() {
         updateChannelCount();
         showPage('name');
 
-      } catch (e) {
-        showToast('Gagal load playlist');
+      } catch {
+        showToast('Gagal memuat playlist');
       }
     });
 
-  /* File Page */
   const fileInput = document.getElementById('file-input');
   document.getElementById('file-drop-zone')
     ?.addEventListener('click', () => fileInput?.click());
@@ -193,27 +226,11 @@ function bindButtons() {
     reader.readAsText(file);
   });
 
-  document.getElementById('back-from-storage')
-    ?.addEventListener('click', () => showPage('chooseType'));
-
-  /* Name Page */
-  document.getElementById('back-from-name')
-    ?.addEventListener('click', () => showPage(
-      state.pendingType === 'url' ? 'enterURL' : 'enterStorage'
-    ));
-
-  document.getElementById('btn-clear-name')
-    ?.addEventListener('click', () => {
-      document.getElementById('name-input').value = '';
-    });
-
   document.getElementById('btn-save-playlist')
     ?.addEventListener('click', () => {
       const name = document.getElementById('name-input').value.trim();
-      if (!name) return showToast('Nama kosong');
-
-      if (!state.pendingChannels.length)
-        return showToast('Channel kosong');
+      if (!name) return showToast('Nama playlist kosong');
+      if (!state.pendingChannels.length) return showToast('Channel kosong');
 
       const playlists = loadDB(DB_KEY_PLAYLISTS, []);
 
@@ -226,9 +243,19 @@ function bindButtons() {
 
       saveDB(DB_KEY_PLAYLISTS, playlists);
 
+      const newIndex = playlists.length - 1;
+      saveDB(DB_KEY_LAST_PL, newIndex);
+      saveDB(DB_KEY_LAST_CH, 0);
+
       showToast('Playlist disimpan');
+
+      showPage('player');
+
+      setTimeout(() => {
+        playStream(playlists[newIndex].channels[0].url);
+      }, 300);
+
       resetPending();
-      showPage('welcome');
     });
 }
 
