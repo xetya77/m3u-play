@@ -1067,29 +1067,46 @@ function clearUrl() {
   document.getElementById('ch-count-url').textContent = '';
 }
 
+// ===== CORS PROXY FETCH =====
+const CORS_PROXIES = [
+  url => url,  // direct first
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://cors-anywhere.herokuapp.com/${url}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
+
+async function fetchWithCorsProxy(url) {
+  for (let i = 0; i < CORS_PROXIES.length; i++) {
+    const proxyUrl = CORS_PROXIES[i](url);
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(proxyUrl, {
+        signal: controller.signal,
+        mode: i === 0 ? 'cors' : 'cors',
+      });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      if (text && text.trim().length > 0) return text;
+    } catch(e) {
+      // try next proxy
+      if (i === CORS_PROXIES.length - 1) throw new Error('Semua proxy gagal: ' + e.message);
+    }
+  }
+}
+
 async function fetchPlaylist() {
   const url = document.getElementById('url-input').value.trim();
   if (!url) { alert('Masukkan URL playlist M3U terlebih dahulu.'); return; }
   
-  showLoading('Mohon bersabar...', 'loading playlist');
+  showLoading('Mohon bersabar...', 'Memuat playlist...');
 
   try {
-    // Try fetching through CORS proxy fallback
-    let text = '';
-
-try {
-  const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error('Proxy fetch failed');
-  text = await res.text();
-} catch(e) {
-  hideLoading();
-  alert('Gagal memuat playlist (proxy / jaringan)');
-  return;
-}
-
+    const text = await fetchWithCorsProxy(url);
     const channels = parseM3U(text);
-    if (channels.length === 0) throw new Error('No channels found');
+    if (channels.length === 0) throw new Error('Tidak ada channel ditemukan dalam playlist');
 
     state.pendingChannels = channels;
     state.pendingUrl = url;
@@ -1242,10 +1259,9 @@ async function updatePlaylist() {
   try {
     let text = '';
     try {
-      const res = await fetch(pl.url, { mode: 'cors' });
-      text = await res.text();
+      text = await fetchWithCorsProxy(pl.url);
     } catch(e) {
-      text = generateSampleM3U();
+      text = '';
     }
     const channels = parseM3U(text);
     if (channels.length > 0) {
@@ -1290,8 +1306,7 @@ function startWatching() {
   // If downloadOnStart
   if (pl.downloadOnStart === 'yes' && pl.url && !pl.url.startsWith('file://')) {
     showLoading('Mohon bersabar...', 'Memperbaharui playlist...');
-    fetch(pl.url, { mode: 'cors' })
-      .then(r => r.text())
+    fetchWithCorsProxy(pl.url)
       .then(text => {
         const chs = parseM3U(text);
         if (chs.length > 0) {
@@ -1324,9 +1339,7 @@ function loadHls(callback) {
   script.onload = callback;
   document.head.appendChild(script);
 }
-function needsProxy(url) {
-  return url.startsWith('http://') || url.startsWith('https://');
-}
+
 function playChannel(idx) {
   const pl = state.playlists[state.currentPlaylist];
   if (!pl || !pl.channels || pl.channels.length === 0) return;
@@ -1342,11 +1355,7 @@ function playChannel(idx) {
   if (state.hls) { state.hls.destroy(); state.hls = null; }
   if (state.dashPlayer) { state.dashPlayer.reset(); state.dashPlayer = null; }
   
-  const rawUrl = ch.url;
-
-const url = needsProxy(rawUrl)
-  ? 'https://corsproxy.io/?' + encodeURIComponent(rawUrl)
-  : rawUrl;
+  const url = ch.url;
   const ext = url.split('?')[0].split('.').pop().toLowerCase();
   
   const playDirect = () => {
@@ -1358,11 +1367,29 @@ const url = needsProxy(rawUrl)
   if (ext === 'm3u8' || url.includes('.m3u8')) {
     loadHls(() => {
       if (Hls.isSupported()) {
-        const hls = new Hls();
-        state.hls = hls;
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+        // Try direct first; if it errors, retry via CORS proxy
+        const tryHls = (srcUrl, usedProxy) => {
+          if (state.hls) { state.hls.destroy(); state.hls = null; }
+          const hls = new Hls({
+            xhrSetup: (xhr, u) => { xhr.withCredentials = false; }
+          });
+          state.hls = hls;
+          hls.loadSource(srcUrl);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+          hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal && !usedProxy) {
+              // Retry with CORS proxy
+              const proxied = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+              tryHls(proxied, true);
+            } else if (data.fatal && usedProxy) {
+              // Try allorigins proxy
+              const proxied2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+              tryHls(proxied2, 'done');
+            }
+          });
+        };
+        tryHls(url, false);
       } else {
         playDirect();
       }
@@ -1544,8 +1571,7 @@ function init() {
     setTimeout(() => {
       const pl = state.playlists[state.currentPlaylist];
       if (pl && pl.downloadOnStart === 'yes' && pl.url && !pl.url.startsWith('file://')) {
-        fetch(pl.url, { mode: 'cors' })
-          .then(r => r.text())
+        fetchWithCorsProxy(pl.url)
           .then(text => {
             const chs = parseM3U(text);
             if (chs.length > 0) { pl.channels = chs; saveState(); }
