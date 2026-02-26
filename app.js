@@ -1,22 +1,21 @@
 'use strict';
 
-// ── Storage helpers ──────────────────────────────────────────────
-const DB_KEY_PLAYLISTS   = 'playm3u_playlists';
-const DB_KEY_LAST_CH     = 'playm3u_last_ch';
-const DB_KEY_LAST_PL     = 'playm3u_last_pl';
-const DB_KEY_FIRST_VISIT = 'playm3u_visited';
+/* ───────────────── STORAGE ───────────────── */
+const DB_KEY_PLAYLISTS = 'playm3u_playlists';
+const DB_KEY_LAST_CH   = 'playm3u_last_ch';
+const DB_KEY_LAST_PL   = 'playm3u_last_pl';
 
 function saveDB(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch(e) {}
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 function loadDB(key, def) {
   try {
     const v = localStorage.getItem(key);
-    return v !== null ? JSON.parse(v) : def;
-  } catch(e) { return def; }
+    return v ? JSON.parse(v) : def;
+  } catch { return def; }
 }
 
-// ── Fetch with timeout (compatibility-safe) ──────────────────────
+/* ───────────────── FETCH TIMEOUT ───────────────── */
 async function fetchWithTimeout(resource, options = {}, timeout = 15000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -28,58 +27,57 @@ async function fetchWithTimeout(resource, options = {}, timeout = 15000) {
   }
 }
 
-// ── App State ────────────────────────────────────────────────────
+/* ───────────────── STATE ───────────────── */
 const state = {
   playlists: [],
   currentPLIndex: 0,
   currentCHIndex: 0,
-  pendingURL: '',
-  pendingType: 'url',
-  pendingChannels: [],
-  channelNumberBuffer: '',
-  channelNumberTimer: null,
-  overlayTimer: null,
   hlsInstance: null,
   dashInstance: null,
+  overlayTimer: null,
 };
 
-// ── DOM refs ─────────────────────────────────────────────────────
+/* ───────────────── DOM CACHE ───────────────── */
 const pages = {
-  welcome:    document.getElementById('page-welcome'),
-  chooseType: document.getElementById('page-choose-type'),
-  enterURL:   document.getElementById('page-enter-url'),
-  enterStorage: document.getElementById('page-enter-storage'),
-  name:       document.getElementById('page-playlist-name'),
-  settings:   document.getElementById('page-settings'),
-  playlists:  document.getElementById('page-playlists'),
-  player:     document.getElementById('page-player'),
+  welcome:     document.getElementById('page-welcome'),
+  chooseType:  document.getElementById('page-choose-type'),
+  enterURL:    document.getElementById('page-enter-url'),
+  enterStorage:document.getElementById('page-enter-storage'),
+  name:        document.getElementById('page-playlist-name'),
+  settings:    document.getElementById('page-settings'),
+  playlists:   document.getElementById('page-playlists'),
+  player:      document.getElementById('page-player'),
 };
 
+const video = document.getElementById('video-player');
+
+/* ───────────────── PAGE SWITCHER ───────────────── */
 function showPage(key) {
-  Object.values(pages).forEach(p => p.classList.remove('active'));
+  Object.values(pages).forEach(p => p?.classList.remove('active'));
   pages[key]?.classList.add('active');
 
   setTimeout(() => {
-    const first = pages[key]?.querySelector('.focusable, button, input, [tabindex]');
-    first?.focus();
-  }, 80);
+    pages[key]?.querySelector('.focusable, button, input')?.focus();
+  }, 60);
 }
 
-// ── Toast ─────────────────────────────────────────────────────────
-let toastEl = null;
-function showToast(msg, dur = 2800) {
+/* ───────────────── TOAST ───────────────── */
+let toastEl;
+function showToast(msg, dur = 2500) {
   if (!toastEl) {
     toastEl = document.createElement('div');
     toastEl.className = 'toast';
     document.body.appendChild(toastEl);
   }
+
   toastEl.textContent = msg;
   toastEl.classList.add('show');
-  clearTimeout(toastEl._timer);
-  toastEl._timer = setTimeout(() => toastEl.classList.remove('show'), dur);
+
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(() => toastEl.classList.remove('show'), dur);
 }
 
-// ── M3U Parser ───────────────────────────────────────────────────
+/* ───────────────── M3U PARSER ───────────────── */
 function parseM3U(text) {
   const lines = text.split(/\r?\n/);
   const channels = [];
@@ -89,16 +87,16 @@ function parseM3U(text) {
     const line = raw.trim();
 
     if (line.startsWith('#EXTINF:')) {
-      current = { name: 'Channel', logo: '', group: '', url: '' };
+      current = { name: 'Channel', group: '', logo: '', url: '' };
 
-      const commaIdx = line.lastIndexOf(',');
-      if (commaIdx >= 0) current.name = line.slice(commaIdx + 1).trim();
+      const nameIdx = line.lastIndexOf(',');
+      if (nameIdx !== -1) current.name = line.slice(nameIdx + 1).trim();
 
       const logoM = line.match(/tvg-logo="([^"]+)"/i);
       if (logoM) current.logo = logoM[1];
 
-      const grpM = line.match(/group-title="([^"]+)"/i);
-      if (grpM) current.group = grpM[1];
+      const groupM = line.match(/group-title="([^"]+)"/i);
+      if (groupM) current.group = groupM[1];
 
     } else if (current && line && !line.startsWith('#')) {
       current.url = line;
@@ -106,75 +104,53 @@ function parseM3U(text) {
       current = null;
     }
   }
+
   return channels;
 }
 
-// ── Fetch M3U ─────────────────────────────────────────────────────
+/* ───────────────── FETCH PLAYLIST ───────────────── */
 async function fetchM3U(url) {
-  const proxies = [
+  const attempts = [
     url,
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
   ];
 
-  for (const u of proxies) {
+  for (const u of attempts) {
     try {
-      const res = await fetchWithTimeout(u, { method: 'GET' }, 15000);
+      const res = await fetchWithTimeout(u);
       if (!res.ok) continue;
 
       const text = await res.text();
-      if (text.includes('#EXTINF') || text.includes('#EXTM3U')) {
-        return text;
-      }
-    } catch(e) {}
+      if (text.includes('#EXTINF')) return text;
+
+    } catch {}
   }
 
-  throw new Error('Tidak dapat memuat playlist.');
+  throw new Error('Playlist gagal dimuat');
 }
 
-// ── Init ──────────────────────────────────────────────────────────
+/* ───────────────── INIT ───────────────── */
 function init() {
   state.playlists = loadDB(DB_KEY_PLAYLISTS, []);
   state.currentPLIndex = loadDB(DB_KEY_LAST_PL, 0);
   state.currentCHIndex = loadDB(DB_KEY_LAST_CH, 0);
 
-  if (state.playlists.length > 0) {
+  if (state.playlists.length) {
     showPage('player');
-    showPlayerLoading(true);
-
-    const pl = state.playlists[state.currentPLIndex];
-
-    if (pl.autoDownload && pl.type === 'url') {
-      fetchM3U(pl.url)
-        .then(text => {
-          pl.channels = parseM3U(text);
-          saveDB(DB_KEY_PLAYLISTS, state.playlists);
-        })
-        .finally(startPlayback);
-    } else {
-      setTimeout(startPlayback, 500);
-    }
-
+    startPlayback();
   } else {
     showPage('welcome');
   }
 
-  bindEvents();
+  bindKeyboard();
 }
 
-// ── Player ────────────────────────────────────────────────────────
-function showPlayerLoading(show, text = 'Mohon bersabar...') {
-  const el = document.getElementById('player-loading');
-  const txt = document.getElementById('player-loading-text');
-  el.style.display = show ? 'flex' : 'none';
-  if (txt) txt.textContent = text;
-}
-
+/* ───────────────── PLAYBACK ───────────────── */
 function startPlayback() {
   const pl = state.playlists[state.currentPLIndex];
   if (!pl?.channels?.length) {
-    showPlayerLoading(false);
-    showToast('Tidak ada channel.');
+    showToast('Playlist kosong');
     showPage('settings');
     return;
   }
@@ -182,85 +158,80 @@ function startPlayback() {
   playChannel(state.currentCHIndex);
 }
 
-function playChannel(idx) {
-  const pl = state.playlists[state.currentPLIndex];
-  const ch = pl.channels[idx];
-  if (!ch) return;
+function cleanupPlayer() {
+  if (!video) return;
 
-  state.currentCHIndex = idx;
-  saveDB(DB_KEY_LAST_CH, idx);
-
-  const video = document.getElementById('video-player');
-
-  // Reset handlers
-  video.onerror = null;
-  video.src = '';
+  video.pause();
+  video.removeAttribute('src');
   video.load();
 
-  if (state.hlsInstance) state.hlsInstance.destroy();
-  if (state.dashInstance) state.dashInstance.reset();
+  try { state.hlsInstance?.destroy(); } catch {}
+  try { state.dashInstance?.reset(); } catch {}
 
-  showPlayerLoading(true);
+  state.hlsInstance = null;
+  state.dashInstance = null;
+}
+
+function playChannel(index) {
+  const pl = state.playlists[state.currentPLIndex];
+  const ch = pl.channels[index];
+  if (!ch || !video) return;
+
+  state.currentCHIndex = index;
+  saveDB(DB_KEY_LAST_CH, index);
+
+  cleanupPlayer();
 
   const url = ch.url;
-  const isHLS = url.includes('.m3u8');
+  const isHLS  = url.includes('.m3u8');
   const isDASH = url.includes('.mpd');
 
-  const onReady = () => {
-    showPlayerLoading(false);
-    showChannelOverlay(ch, idx + 1, pl.name);
-  };
-
-  video.onerror = () => {
-    showPlayerLoading(false);
-    showToast(`Error: ${ch.name}`);
-  };
+  video.onerror = () => showToast(`Error channel`);
 
   if (isDASH && typeof dashjs !== 'undefined') {
     const dash = dashjs.MediaPlayer().create();
     dash.initialize(video, url, true);
     state.dashInstance = dash;
-    video.addEventListener('canplay', onReady, { once: true });
 
   } else if (isHLS && typeof Hls !== 'undefined' && Hls.isSupported()) {
-    const hls = new Hls({ enableWorker: true });
+    const hls = new Hls();
     hls.loadSource(url);
     hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => {});
-      onReady();
-    });
     state.hlsInstance = hls;
 
   } else {
     video.src = url;
-    video.play().catch(() => {});
-    video.addEventListener('canplay', onReady, { once: true });
   }
+
+  video.play().catch(() => {});
+  showOverlay(ch, index + 1, pl.name);
 }
 
-// ── Overlay ───────────────────────────────────────────────────────
-function showChannelOverlay(ch, num, plName) {
-  document.getElementById('ch-playlist-name').textContent = plName;
-  document.getElementById('ch-group').textContent = ch.group || '';
-  document.getElementById('ch-number').textContent = num;
-  document.getElementById('ch-name').textContent = ch.name;
+/* ───────────────── OVERLAY ───────────────── */
+function showOverlay(ch, num, plName) {
+  const nameEl = document.getElementById('ch-name');
+  const numEl  = document.getElementById('ch-number');
+
+  if (nameEl) nameEl.textContent = ch.name;
+  if (numEl)  numEl.textContent = num;
 
   const overlay = document.getElementById('channel-overlay');
+  if (!overlay) return;
+
   overlay.style.display = 'flex';
 
   clearTimeout(state.overlayTimer);
   state.overlayTimer = setTimeout(() => {
     overlay.style.display = 'none';
-  }, 4000);
+  }, 3500);
 }
 
-// ── Keyboard ──────────────────────────────────────────────────────
-function bindEvents() {
+/* ───────────────── KEYBOARD ───────────────── */
+function bindKeyboard() {
   document.addEventListener('keydown', e => {
-    if (!pages.player.classList.contains('active')) return;
+    if (!pages.player?.classList.contains('active')) return;
 
-    if (e.key === 'ArrowUp') channelUp();
+    if (e.key === 'ArrowUp')   channelUp();
     if (e.key === 'ArrowDown') channelDown();
   });
 }
