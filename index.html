@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PLAY M3U</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ========== PAGE: WELCOME ========== -->
+<div id="page-welcome" class="page active">
+  <div class="welcome-bg"></div>
+  <div class="welcome-card">
+    <h1 class="welcome-title">PLAY M3U.</h1>
+    <p class="welcome-desc">
+      Aplikasi ini hanya untuk memutar siaran IPTV.<br>
+      Belum ada channel di dalamnya.<br>
+      Tambahkan playlist M3U Anda untuk mulai menonton.
+    </p>
+    <button class="btn-primary" id="btn-add-playlist-welcome" tabindex="1">
+      Tambah<br>Playlist M3U
+    </button>
+  </div>
+</div>
+
+<!-- ========== PAGE: CHOOSE TYPE ========== -->
+<div id="page-choose-type" class="page">
+  <div class="page-header">
+    <button class="btn-back" id="back-from-choose" tabindex="1">
+      <span class="arrow-icon">&#8592;</span> <span class="underline-text">Kembali</span>
+    </button>
+    <span class="page-title">Tambahkan playlist</span>
+  </div>
+  <div class="option-list">
+    <div class="option-item focusable" id="opt-url" tabindex="2" data-type="url">
+      <div class="option-checkbox" id="check-url"></div>
+      <span class="option-label">M3U playlist from URL</span>
+    </div>
+    <div class="option-item focusable" id="opt-storage" tabindex="3" data-type="storage">
+      <div class="option-checkbox" id="check-storage"></div>
+      <span class="option-label">M3U playlist from storage/USB</span>
+    </div>
+  </div>
+  <div class="catatan-box" id="catatan-choose">
+    <span class="catatan-label">catatan:</span>
+    <p class="catatan-text" id="catatan-choose-text"></p>
+  </div>
+</div>
+
+<!-- ========== PAGE: ENTER URL ========== -->
+<div id="page-enter-url" class="page">
+  <div class="page-header">
+    <button class="btn-back" id="back-from-url" tabindex="1">
+      <span class="arrow-icon">&#8592;</span> <span class="underline-text">Kembali</span>
+    </button>
+    <span class="page-title">Masukkan playlist</span>
+  </div>
+  <div class="form-section">
+    <label class="field-label">M3U playlist URL</label>
+    <input type="url" id="url-input" class="url-input" placeholder="https://contoh.com/siaran" tabindex="2" autocomplete="off">
+    <div class="action-row">
+      <button class="btn-icon btn-delete focusable" id="btn-clear-url" tabindex="3" title="Hapus URL">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+      <button class="btn-icon btn-next focusable" id="btn-next-url" tabindex="4" title="Lanjutkan">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="loading-box" id="loading-url" style="display:none">
+    <div class="spinner"></div>
+    <p>Mohon bersabar...</p>
+  </div>
+  <div class="catatan-box">
+    <span class="catatan-label">catatan:</span>
+    <p class="catatan-text">Masukkan URL playlist M3U IPTV Anda.<br>Pastikan link aktif dan bisa dibuka lewat internet.<br><br>Aplikasi ini tidak menyediakan playlist.</p>
+  </div>
+</div>
+
+<!-- ========== PAGE: ENTER STORAGE ========== -->
+<div id="page-enter-storage" class="page">
+  <div class="page-header">
+    <button class="btn-back" id="back-from-storage" tabindex="1">
+      <span class="arrow-icon">&#8592;</span> <span class="underline-text">Kembali</span>
+    </button>
+    <span class="page-title">Masukkan playlist</span>
+  </div>
+  <div class="form-section">
+    <label class="field-label">M3U playlist file</label>
+    <div class="file-drop-zone focusable" id="file-drop-zone" tabindex="2">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <p>Klik atau seret file .m3u / .m3u8</p>
+      <input type="file" id="file-input" accept=".m3u,.m3u8,.txt" style="display:none">
+    </div>
+    <div class="action-row">
+      <button class="btn-icon btn-delete focusable" id="btn-clear-file" tabindex="3" title="Hapus file">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+      <button class="btn-icon btn-next focusable" id="btn-next-file" tabindex="4" title="Lanjutkan">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="loading-box" id="loading-file" style="display:none">
+    <div class="spinner"></div>
+    <p>Mohon bersabar...</p>
+  </div>
+  <div class="catatan-box">
+    <span class="catatan-label">catatan:</span>
+    <p class="catatan-text">Gunakan opsi ini jika file playlist M3U tersimpan di perangkat atau USB.<br>Pastikan file sudah ada dan bisa dibaca.</p>
+  </div>
+</div>
+
+<!-- ========== PAGE: PLAYLIST NAME ========== -->
+<div id="page-playlist-name" class="page">
+  <div class="page-header">
+    <button class="btn-back" id="back-from-name" tabindex="1">
+      <span class="arrow-icon">&#8592;</span> <span class="underline-text">Kembali</span>
+    </button>
+    <span class="page-title">Masukkan<br>nama playlist</span>
+  </div>
+  <div class="form-section">
+    <label class="field-label">Nama playlist</label>
+    <input type="text" id="name-input" class="url-input" placeholder="playlist ku 1" tabindex="2" autocomplete="off">
+    <div class="action-row">
+      <button class="btn-icon btn-delete focusable" id="btn-clear-name" tabindex="3" title="Hapus nama">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+      <div class="channel-count-label" id="channel-count">0 siaran ditemukan</div>
+      <button class="btn-icon btn-next focusable" id="btn-save-playlist" tabindex="4" title="Simpan">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+      </button>
+    </div>
+    <div class="download-toggle">
+      <p class="toggle-title">Download playlist on each start</p>
+      <div class="radio-group">
+        <label class="radio-item focusable" tabindex="5">
+          <input type="radio" name="auto-download" value="yes" id="radio-yes">
+          <span class="radio-box" id="rb-yes"></span>
+          <span>Yes</span>
+        </label>
+        <label class="radio-item focusable" tabindex="6">
+          <input type="radio" name="auto-download" value="no" id="radio-no" checked>
+          <span class="radio-box" id="rb-no"></span>
+          <span>No</span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE: SETTINGS (after playlist added) ========== -->
+<div id="page-settings" class="page">
+  <div class="page-header settings-header">
+    <span></span>
+    <span class="page-title">Pengaturan</span>
+  </div>
+  <div class="settings-menu">
+    <div class="settings-item focusable" id="btn-start-watch" tabindex="1">Mulai menonton</div>
+    <div class="settings-item focusable" id="btn-go-playlists" tabindex="2">Playlists</div>
+  </div>
+  <div class="catatan-box catatan-success">
+    <span class="catatan-label">catatan:</span>
+    <p class="catatan-text">Playlist sudah berhasil ditambahkan.<br>Selamat menonton.</p>
+  </div>
+</div>
+
+<!-- ========== PAGE: PLAYLISTS MANAGER ========== -->
+<div id="page-playlists" class="page">
+  <div class="page-header">
+    <button class="btn-back" id="back-from-playlists" tabindex="1">
+      <span class="arrow-icon">&#8592;</span> <span class="underline-text">Kembali</span>
+    </button>
+    <span class="page-title">Playlists</span>
+  </div>
+  <div id="playlist-list-container"></div>
+  <div class="btn-add-new-wrap">
+    <button class="btn-add-new focusable" id="btn-add-new-playlist" tabindex="50">+ Tambah Playlist Baru</button>
+  </div>
+  <div class="storage-info">
+    <p class="storage-title">Storagespace for data</p>
+    <p class="storage-detail" id="storage-detail">Used: — / Available: —</p>
+  </div>
+</div>
+
+<!-- ========== PAGE: PLAYER ========== -->
+<div id="page-player" class="page player-page">
+  <div class="player-loading" id="player-loading" style="display:none">
+    <div class="spinner spinner-dark"></div>
+    <p class="loading-text" id="player-loading-text">Mohon bersabar...</p>
+  </div>
+  <video id="video-player" autoplay playsinline></video>
+  <div class="channel-info-overlay" id="channel-overlay">
+    <div class="channel-logo-wrap" id="ch-logo-wrap">
+      <img id="ch-logo" src="" alt="" onerror="this.style.display='none'">
+    </div>
+    <div class="channel-meta">
+      <div class="ch-meta-top">
+        <span class="ch-playlist-name" id="ch-playlist-name"></span>
+        <span class="ch-group" id="ch-group"></span>
+      </div>
+      <div class="ch-number-name">
+        <span class="ch-number" id="ch-number"></span>
+        <span class="ch-name" id="ch-name"></span>
+      </div>
+    </div>
+  </div>
+  <div class="channel-number-input-overlay" id="ch-num-input-overlay" style="display:none">
+    <div class="ch-num-display" id="ch-num-display"></div>
+  </div>
+</div>
+
+<!-- HLS.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
+<!-- dash.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/4.7.0/dash.all.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
