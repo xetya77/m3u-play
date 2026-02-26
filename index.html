@@ -1076,21 +1076,17 @@ async function fetchPlaylist() {
   try {
     // Try fetching through CORS proxy fallback
     let text = '';
-    try {
-      const res = await fetch(url, { mode: 'cors' });
-      if (!res.ok) throw new Error('fetch failed');
-      text = await res.text();
-    } catch(e) {
-      // Try with a CORS proxy
-      try {
-        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-        const res = await fetch(proxyUrl);
-        text = await res.text();
-      } catch(e2) {
-        // For demo, generate sample channels
-        text = generateSampleM3U();
-      }
-    }
+
+try {
+  const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('Proxy fetch failed');
+  text = await res.text();
+} catch(e) {
+  hideLoading();
+  alert('Gagal memuat playlist (proxy / jaringan)');
+  return;
+}
 
     const channels = parseM3U(text);
     if (channels.length === 0) throw new Error('No channels found');
@@ -1328,7 +1324,9 @@ function loadHls(callback) {
   script.onload = callback;
   document.head.appendChild(script);
 }
-
+function needsProxy(url) {
+  return url.startsWith('http://') || url.startsWith('https://');
+}
 function playChannel(idx) {
   const pl = state.playlists[state.currentPlaylist];
   if (!pl || !pl.channels || pl.channels.length === 0) return;
@@ -1344,7 +1342,11 @@ function playChannel(idx) {
   if (state.hls) { state.hls.destroy(); state.hls = null; }
   if (state.dashPlayer) { state.dashPlayer.reset(); state.dashPlayer = null; }
   
-  const url = ch.url;
+  const rawUrl = ch.url;
+
+const url = needsProxy(rawUrl)
+  ? 'https://corsproxy.io/?' + encodeURIComponent(rawUrl)
+  : rawUrl;
   const ext = url.split('?')[0].split('.').pop().toLowerCase();
   
   const playDirect = () => {
